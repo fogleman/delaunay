@@ -22,6 +22,7 @@ func Triangulate(points []Point) (*Triangulation, error) {
 
 type triangulator struct {
 	points       []Point
+	distances    []float64
 	ids          []int
 	center       Point
 	hash         []*node
@@ -44,18 +45,9 @@ func (a *triangulator) Swap(i, j int) {
 }
 
 func (a *triangulator) Less(i, j int) bool {
-	p1 := a.points[a.ids[i]]
-	p2 := a.points[a.ids[j]]
-	d1 := p1.distance(a.center)
-	d2 := p2.distance(a.center)
-	if d1 != d2 {
-		return d1 < d2
-	}
-	if p1.X != p2.X {
-		return p1.X < p2.X
-	}
-	return p1.Y < p2.Y
+	return a.distances[a.ids[i]] < a.distances[a.ids[j]]
 }
+
 func (tri *triangulator) triangulate() error {
 	points := tri.points
 
@@ -137,7 +129,10 @@ func (tri *triangulator) triangulate() error {
 	tri.center = circumcenter(points[i0], points[i1], points[i2])
 
 	// sort the points by distance from the seed triangle circumcenter
-	// TODO: try precomputing distances
+	tri.distances = make([]float64, n)
+	for i, p := range points {
+		tri.distances[i] = p.distance(tri.center)
+	}
 	sort.Sort(tri)
 
 	// initialize a hash table for storing edges of the advancing convex hull

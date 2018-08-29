@@ -9,7 +9,7 @@ import (
 type Triangulation struct {
 	Points    []Point
 	Triangles []int
-	HalfEdges []int
+	Halfedges []int
 }
 
 func Triangulate(points []Point) (*Triangulation, error) {

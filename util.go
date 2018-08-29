@@ -20,9 +20,7 @@ func inCircle(a, b, c, p Point) bool {
 	bp := ex*ex + ey*ey
 	cp := fx*fx + fy*fy
 
-	return dx*(ey*cp-bp*fy)-
-		dy*(ex*cp-bp*fx)+
-		ap*(ex*fy-ey*fx) < 0
+	return dx*(ey*cp-bp*fy)-dy*(ex*cp-bp*fx)+ap*(ex*fy-ey*fx) < 0
 }
 
 func circumradius(a, b, c Point) float64 {

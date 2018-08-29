@@ -35,7 +35,8 @@ func newTriangulator(points []Point) *triangulator {
 	return &triangulator{points: points}
 }
 
-// TODO: don't do it this way
+// sorting a triangulator sorts the `ids` such that the referenced points
+// are in order by their distance to `center`
 func (a *triangulator) Len() int {
 	return len(a.points)
 }
@@ -52,7 +53,7 @@ func (tri *triangulator) triangulate() error {
 	points := tri.points
 
 	n := len(points)
-	if n == 0 { // TODO: < 3?
+	if n == 0 {
 		return nil
 	}
 
@@ -309,34 +310,4 @@ func (t *triangulator) legalize(a int) int {
 	}
 
 	return ar
-}
-
-type node struct {
-	p       Point
-	i       int
-	t       int
-	removed bool
-	prev    *node
-	next    *node
-}
-
-func newNode(p Point, i int, prev *node) *node {
-	n := &node{p, i, 0, false, nil, nil}
-	if prev == nil {
-		n.prev = n
-		n.next = n
-	} else {
-		n.next = prev.next
-		n.prev = prev
-		prev.next.prev = n
-		prev.next = n
-	}
-	return n
-}
-
-func (n *node) remove() *node {
-	n.prev.next = n.next
-	n.next.prev = n.prev
-	n.removed = true
-	return n.prev
 }

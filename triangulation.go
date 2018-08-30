@@ -243,9 +243,8 @@ func (tri *triangulator) triangulate() error {
 }
 
 func (t *triangulator) hashKey(point Point) int {
-	dx := point.X - t.center.X
-	dy := point.Y - t.center.Y
-	return int(math.Floor(pseudoAngle(dx, dy) * float64(len(t.hash))))
+	d := point.sub(t.center)
+	return int(pseudoAngle(d.X, d.Y) * float64(len(t.hash)))
 }
 
 func (t *triangulator) hashEdge(e *node) {

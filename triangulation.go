@@ -2,7 +2,6 @@ package delaunay
 
 import (
 	"fmt"
-	"math"
 	"sort"
 )
 
@@ -25,7 +24,6 @@ type triangulator struct {
 	distances    []float64
 	ids          []int
 	center       Point
-	hash         []*node
 	triangles    []int
 	halfedges    []int
 	trianglesLen int
@@ -136,22 +134,17 @@ func (tri *triangulator) triangulate() error {
 	}
 	sort.Sort(tri)
 
-	// initialize a hash table for storing edges of the advancing convex hull
-	hashSize := int(math.Ceil(math.Sqrt(float64(n))))
-	tri.hash = make([]*node, hashSize)
-
 	// initialize a circular doubly-linked list that will hold an advancing convex hull
 	e := newNode(points[i0], i0, nil)
 	e.t = 0
-	tri.hashEdge(e)
 
 	e = newNode(points[i1], i1, e)
 	e.t = 1
-	tri.hashEdge(e)
 
 	e = newNode(points[i2], i2, e)
 	e.t = 2
-	tri.hashEdge(e)
+
+	hull := e
 
 	maxTriangles := 2*n - 5
 	tri.trianglesLen = 0
@@ -176,28 +169,15 @@ func (tri *triangulator) triangulate() error {
 			continue
 		}
 
-		// find a visible edge on the convex hull using edge hash
-		var start *node
-		key := tri.hashKey(p)
-		for j := 0; j < len(tri.hash); j++ {
-			start = tri.hash[key]
-			if start != nil && !start.removed {
-				break
-			}
-			key++
-			if key >= len(tri.hash) {
-				key = 0
-			}
-		}
-
+		// find a visible edge on the convex hull
+		start := hull
 		e := start
-		for area(p, e.p, e.next.p) >= 0 {
+		for area(p, e.p, e.next.p) > 0 {
 			e = e.next
 			if e == start {
 				return fmt.Errorf("Something is wrong with the input points.")
 			}
 		}
-
 		walkBack := e == start
 
 		// add the first triangle from the point
@@ -213,50 +193,30 @@ func (tri *triangulator) triangulate() error {
 
 		// walk forward through the hull, adding more triangles and flipping recursively
 		q := e.next
-		for area(p, q.p, q.next.p) < 0 {
+		for area(p, q.p, q.next.p) < eps {
 			t = tri.addTriangle(q.i, i, q.next.i, q.prev.t, -1, q.t)
 			q.prev.t = tri.legalize(t + 2)
-			q.remove()
+			hull = q.remove()
 			q = q.next
 		}
 
 		if walkBack {
 			// walk backward from the other side, adding more triangles and flipping
 			q := e.prev
-			for area(p, q.prev.p, q.p) < 0 {
+			for area(p, q.prev.p, q.p) < eps {
 				t = tri.addTriangle(q.prev.i, i, q.i, -1, q.t, q.prev.t)
 				tri.legalize(t + 2)
 				q.prev.t = t
-				q.remove()
+				hull = q.remove()
 				q = q.prev
 			}
 		}
-
-		// save the two new edges in the hash table
-		tri.hashEdge(e)
-		tri.hashEdge(e.prev)
 	}
 
 	tri.triangles = tri.triangles[:tri.trianglesLen]
 	tri.halfedges = tri.halfedges[:tri.trianglesLen]
 
 	return nil
-}
-
-func (t *triangulator) hashKey(point Point) int {
-	dx := point.X - t.center.X
-	dy := point.Y - t.center.Y
-	// use pseudo-angle: a measure that monotonically increases
-	// with real angle, but doesn't require expensive trigonometry
-	p := 1 - dx/(math.Abs(dx)+math.Abs(dy))
-	if dy < 0 {
-		p = -p
-	}
-	return int(math.Floor((2 + p) / 4 * float64(len(t.hash))))
-}
-
-func (t *triangulator) hashEdge(e *node) {
-	t.hash[t.hashKey(e.p)] = e
 }
 
 func (t *triangulator) addTriangle(i0, i1, i2, a, b, c int) int {

@@ -48,6 +48,26 @@ func TestSquare(t *testing.T) {
 	}
 }
 
+func testHalfedges(t *testing.T, points []Point) {
+	tri, err := Triangulate(points)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i1, i2 := range tri.Halfedges {
+		if i1 != -1 && tri.Halfedges[i1] != i2 {
+			t.Fatal("invalid halfedge connection")
+		}
+		if i2 != -1 && tri.Halfedges[i2] != i1 {
+			t.Fatal("invalid halfedge connection")
+		}
+	}
+}
+
+func TestHalfedges(t *testing.T) {
+	testHalfedges(t, []Point{{516, 661}, {369, 793}, {426, 539}, {273, 525}, {204, 694}, {747, 750}, {454, 390}})
+	testHalfedges(t, []Point{{382, 302}, {382, 328}, {382, 205}, {623, 175}, {382, 188}, {382, 284}, {623, 87}, {623, 341}, {141, 227}})
+}
+
 func BenchmarkUniform(b *testing.B) {
 	rnd := rand.New(rand.NewSource(99))
 	points := make([]Point, b.N)

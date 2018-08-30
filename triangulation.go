@@ -27,6 +27,7 @@ type triangulator struct {
 	triangles    []int
 	halfedges    []int
 	trianglesLen int
+	hull         *node
 }
 
 func newTriangulator(points []Point) *triangulator {
@@ -144,10 +145,9 @@ func (tri *triangulator) triangulate() error {
 	e = newNode(points[i2], i2, e)
 	e.t = 2
 
-	hull := e
+	tri.hull = e
 
 	maxTriangles := 2*n - 5
-	tri.trianglesLen = 0
 	tri.triangles = make([]int, maxTriangles*3)
 	tri.halfedges = make([]int, maxTriangles*3)
 
@@ -170,9 +170,9 @@ func (tri *triangulator) triangulate() error {
 		}
 
 		// find a visible edge on the convex hull
-		start := hull
+		start := tri.hull
 		e := start
-		for area(p, e.p, e.next.p) > 0 {
+		for area(p, e.p, e.next.p) >= 0 {
 			e = e.next
 			if e == start {
 				return fmt.Errorf("Something is wrong with the input points.")
@@ -187,27 +187,24 @@ func (tri *triangulator) triangulate() error {
 
 		// recursively flip triangles from the point until they satisfy the Delaunay condition
 		e.t = tri.legalize(t + 2)
-		if e.prev.prev.t == tri.halfedges[t+1] {
-			e.prev.prev.t = t + 2
-		}
 
 		// walk forward through the hull, adding more triangles and flipping recursively
 		q := e.next
-		for area(p, q.p, q.next.p) < eps {
+		for area(p, q.p, q.next.p) < 0 {
 			t = tri.addTriangle(q.i, i, q.next.i, q.prev.t, -1, q.t)
 			q.prev.t = tri.legalize(t + 2)
-			hull = q.remove()
+			tri.hull = q.remove()
 			q = q.next
 		}
 
 		if walkBack {
 			// walk backward from the other side, adding more triangles and flipping
 			q := e.prev
-			for area(p, q.prev.p, q.p) < eps {
+			for area(p, q.prev.p, q.p) < 0 {
 				t = tri.addTriangle(q.prev.i, i, q.i, -1, q.t, q.prev.t)
 				tri.legalize(t + 2)
 				q.prev.t = t
-				hull = q.remove()
+				tri.hull = q.remove()
 				q = q.prev
 			}
 		}
@@ -239,6 +236,21 @@ func (t *triangulator) link(a, b int) {
 }
 
 func (t *triangulator) legalize(a int) int {
+	// if the pair of triangles doesn't satisfy the Delaunay condition
+	// (p1 is inside the circumcircle of [p0, pl, pr]), flip them,
+	// then do the same check/flip recursively for the new pair of triangles
+	//
+	//           pl                    pl
+	//          /||\                  /  \
+	//       al/ || \bl            al/    \a
+	//        /  ||  \              /      \
+	//       /  a||b  \    flip    /___ar___\
+	//     p0\   ||   /p1   =>   p0\---bl---/p1
+	//        \  ||  /              \      /
+	//       ar\ || /br             b\    /br
+	//          \||/                  \  /
+	//           pr                    pr
+
 	b := t.halfedges[a]
 
 	a0 := a - a%3
@@ -258,6 +270,19 @@ func (t *triangulator) legalize(a int) int {
 	if illegal {
 		t.triangles[a] = p1
 		t.triangles[b] = p0
+
+		// edge swapped on the other side of the hull (rare)
+		// fix the halfedge reference
+		if t.halfedges[bl] == -1 {
+			e := t.hull.next
+			for e != t.hull {
+				if e.t == bl {
+					e.t = a
+					break
+				}
+				e = e.next
+			}
+		}
 
 		t.link(a, t.halfedges[bl])
 		t.link(b, t.halfedges[ar])

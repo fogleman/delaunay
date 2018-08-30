@@ -24,4 +24,16 @@ triangulation, err := delaunay.Triangulate(points)
 // use triangulation.Triangles, triangulation.Halfedges
 ```
 
+### Performance
+
+| # of Points | Time |
+| ---: | ---: |
+| 10 | 1.559µs |
+| 100 | 37.645µs |
+| 1,000 | 485.625µs |
+| 10,000 | 5.552ms |
+| 100,000 | 79.895ms |
+| 1,000,000 | 1.272s |
+| 10,000,000 | 23.481s |
+
 ![Example](https://i.imgur.com/xhfW1EV.png)

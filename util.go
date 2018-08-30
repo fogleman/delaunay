@@ -4,6 +4,16 @@ import "math"
 
 var infinity = math.Inf(1)
 
+func pseudoAngle(dx, dy float64) float64 {
+	p := dx / (math.Abs(dx) + math.Abs(dy))
+	if dy > 0 {
+		p = 3 - p
+	} else {
+		p = 1 + p
+	}
+	return p / 4
+}
+
 func area(a, b, c Point) float64 {
 	return (b.Y-a.Y)*(c.X-b.X) - (b.X-a.X)*(c.Y-b.Y)
 }

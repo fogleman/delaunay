@@ -2,6 +2,7 @@ package delaunay
 
 import (
 	"fmt"
+	"math"
 	"sort"
 )
 
@@ -28,6 +29,7 @@ type triangulator struct {
 	halfedges    []int
 	trianglesLen int
 	hull         *node
+	hash         []*node
 }
 
 func newTriangulator(points []Point) *triangulator {
@@ -135,15 +137,22 @@ func (tri *triangulator) triangulate() error {
 	}
 	sort.Sort(tri)
 
+	// initialize a hash table for storing edges of the advancing convex hull
+	hashSize := int(math.Ceil(math.Sqrt(float64(n))))
+	tri.hash = make([]*node, hashSize)
+
 	// initialize a circular doubly-linked list that will hold an advancing convex hull
 	e := newNode(points[i0], i0, nil)
 	e.t = 0
+	tri.hashEdge(e)
 
 	e = newNode(points[i1], i1, e)
 	e.t = 1
+	tri.hashEdge(e)
 
 	e = newNode(points[i2], i2, e)
 	e.t = 2
+	tri.hashEdge(e)
 
 	tri.hull = e
 
@@ -169,8 +178,21 @@ func (tri *triangulator) triangulate() error {
 			continue
 		}
 
-		// find a visible edge on the convex hull
-		start := tri.hull
+		// find a visible edge on the convex hull using edge hash
+		var start *node
+		key := tri.hashKey(p)
+		for j := 0; j < len(tri.hash); j++ {
+			start = tri.hash[key]
+			if start != nil && !start.removed {
+				break
+			}
+			key++
+			if key >= len(tri.hash) {
+				key = 0
+			}
+		}
+		start = start.prev
+
 		e := start
 		for area(p, e.p, e.next.p) >= 0 {
 			e = e.next
@@ -208,12 +230,26 @@ func (tri *triangulator) triangulate() error {
 				q = q.prev
 			}
 		}
+
+		// save the two new edges in the hash table
+		tri.hashEdge(e)
+		tri.hashEdge(e.prev)
 	}
 
 	tri.triangles = tri.triangles[:tri.trianglesLen]
 	tri.halfedges = tri.halfedges[:tri.trianglesLen]
 
 	return nil
+}
+
+func (t *triangulator) hashKey(point Point) int {
+	dx := point.X - t.center.X
+	dy := point.Y - t.center.Y
+	return int(math.Floor(pseudoAngle(dx, dy) * float64(len(t.hash))))
+}
+
+func (t *triangulator) hashEdge(e *node) {
+	t.hash[t.hashKey(e.p)] = e
 }
 
 func (t *triangulator) addTriangle(i0, i1, i2, a, b, c int) int {

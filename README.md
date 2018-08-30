@@ -26,6 +26,8 @@ triangulation, err := delaunay.Triangulate(points)
 
 ### Performance
 
+3.3 GHz Intel Core i5
+
 | # of Points | Time |
 | ---: | ---: |
 | 10 | 1.559µs |

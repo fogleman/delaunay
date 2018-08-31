@@ -320,7 +320,6 @@ func (t *triangulator) legalize(a int) int {
 	bl := b0 + (b+2)%3
 
 	if b < 0 {
-		// TODO: this happens for points on a circle - why?
 		return ar
 	}
 

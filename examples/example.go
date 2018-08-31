@@ -4,46 +4,42 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/fogleman/delaunay"
 	"github.com/fogleman/gg"
+	"github.com/fogleman/poissondisc"
 )
 
 const (
-	W = 1024
-	H = 1024
-	N = 1000
+	W = 2048
+	H = 2048
+	N = 5000
 )
 
-func uniform(rnd *rand.Rand) delaunay.Point {
-	x := rnd.Float64()
-	y := rnd.Float64()
-	return delaunay.Point{x, y}
-}
-
-func normal(rnd *rand.Rand) delaunay.Point {
-	x := rnd.NormFloat64()
-	y := rnd.NormFloat64()
-	return delaunay.Point{x, y}
-}
-
-func circle(rnd *rand.Rand) delaunay.Point {
-	a := rnd.Float64() * math.Pi * 2
-	r := 1 + rnd.NormFloat64()*0.1
-	x := math.Cos(a) * r
-	y := math.Sin(a) * r
-	return delaunay.Point{x, y}
+func generatePoints() []delaunay.Point {
+	s := math.Sqrt(float64(N) * 1.618)
+	points := poissondisc.Sample(-s, -s, s, s, 1, 32, nil)
+	sort.Slice(points, func(i, j int) bool {
+		p1 := points[i]
+		p2 := points[j]
+		d1 := math.Hypot(p1.X, p1.Y)
+		d2 := math.Hypot(p2.X, p2.Y)
+		return d1 < d2
+	})
+	points = points[:N]
+	result := make([]delaunay.Point, len(points))
+	for i, p := range points {
+		result[i].X = p.X
+		result[i].Y = p.Y
+	}
+	return result
 }
 
 func main() {
 	// generate points
-	rnd := rand.New(rand.NewSource(99))
-	points := make([]delaunay.Point, N)
-	for i := range points {
-		points[i] = circle(rnd)
-	}
+	points := generatePoints()
 
 	// triangulate
 	start := time.Now()
@@ -91,9 +87,16 @@ func main() {
 	dc.Stroke()
 
 	for _, p := range points {
-		dc.DrawPoint(p.X, p.Y, 3)
+		dc.DrawPoint(p.X, p.Y, 5)
 	}
 	dc.Fill()
+
+	for _, p := range triangulation.ConvexHull {
+		dc.LineTo(p.X, p.Y)
+	}
+	dc.ClosePath()
+	dc.SetLineWidth(5)
+	dc.Stroke()
 
 	dc.SavePNG("out.png")
 }

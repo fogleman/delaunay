@@ -60,7 +60,17 @@ func (a *triangulator) Swap(i, j int) {
 }
 
 func (a *triangulator) Less(i, j int) bool {
-	return a.distances[a.ids[i]] < a.distances[a.ids[j]]
+	d1 := a.distances[a.ids[i]]
+	d2 := a.distances[a.ids[j]]
+	if d1 != d2 {
+		return d1 < d2
+	}
+	p1 := a.points[a.ids[i]]
+	p2 := a.points[a.ids[j]]
+	if p1.X != p2.X {
+		return p1.X < p2.X
+	}
+	return p1.Y < p2.Y
 }
 
 func (tri *triangulator) triangulate() error {
@@ -350,15 +360,15 @@ func (t *triangulator) legalize(a int) int {
 	return ar
 }
 
-func (t *triangulator) hullArea() float64 {
-	var result float64
+func (t *triangulator) convexHull() []Point {
+	var result []Point
 	e := t.hull
 	for {
-		result += (e.p.X - e.prev.p.X) * (e.p.Y + e.prev.p.Y)
-		e = e.next
+		result = append(result, e.p)
+		e = e.prev
 		if e == t.hull {
 			break
 		}
 	}
-	return result / 2
+	return result
 }

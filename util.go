@@ -2,6 +2,8 @@ package delaunay
 
 import "math"
 
+const eps = 1e-9
+
 var infinity = math.Inf(1)
 
 func pseudoAngle(dx, dy float64) float64 {
@@ -69,4 +71,13 @@ func circumcenter(a, b, c Point) Point {
 	y := a.Y + (dx*cl-ex*bl)*0.5/d
 
 	return Point{x, y}
+}
+
+func polygonArea(points []Point) float64 {
+	var result float64
+	for i, p := range points {
+		q := points[(i+1)%len(points)]
+		result += (p.X - q.X) * (p.Y + q.Y)
+	}
+	return result / 2
 }

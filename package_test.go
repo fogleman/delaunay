@@ -57,11 +57,10 @@ func shouldFail(t *testing.T, points []Point) {
 }
 
 func validate(t *testing.T, points []Point) *Triangulation {
-	x := newTriangulator(points)
-	if err := x.triangulate(); err != nil {
+	tri, err := Triangulate(points)
+	if err != nil {
 		t.Fatal(err)
 	}
-	tri := &Triangulation{points, x.triangles, x.halfedges}
 
 	// verify halfedges
 	for i1, i2 := range tri.Halfedges {
@@ -74,7 +73,7 @@ func validate(t *testing.T, points []Point) *Triangulation {
 	}
 
 	// compare hulls
-	hull1 := x.convexHull()
+	hull1 := tri.ConvexHull
 	hull2 := ConvexHull(points)
 	if len(hull1) != len(hull2) {
 		t.Fatalf("invalid hull: %d != %d", len(hull1), len(hull2))

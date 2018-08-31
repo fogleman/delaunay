@@ -7,9 +7,10 @@ import (
 )
 
 type Triangulation struct {
-	Points    []Point
-	Triangles []int
-	Halfedges []int
+	Points     []Point
+	ConvexHull []Point
+	Triangles  []int
+	Halfedges  []int
 }
 
 func Triangulate(points []Point) (*Triangulation, error) {
@@ -17,7 +18,7 @@ func Triangulate(points []Point) (*Triangulation, error) {
 	if err := t.triangulate(); err != nil {
 		return nil, err
 	}
-	return &Triangulation{points, t.triangles, t.halfedges}, nil
+	return &Triangulation{points, t.convexHull(), t.triangles, t.halfedges}, nil
 }
 
 func (t *Triangulation) area() float64 {

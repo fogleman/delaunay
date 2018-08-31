@@ -13,6 +13,7 @@ type Triangulation struct {
 	Halfedges  []int
 }
 
+// Triangulate returns a Delaunay triangulation of the provided points.
 func Triangulate(points []Point) (*Triangulation, error) {
 	t := newTriangulator(points)
 	if err := t.triangulate(); err != nil {

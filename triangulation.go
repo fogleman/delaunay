@@ -20,6 +20,19 @@ func Triangulate(points []Point) (*Triangulation, error) {
 	return &Triangulation{points, t.triangles, t.halfedges}, nil
 }
 
+func (t *Triangulation) area() float64 {
+	var result float64
+	points := t.Points
+	ts := t.Triangles
+	for i := 0; i < len(ts); i += 3 {
+		p0 := points[ts[i+0]]
+		p1 := points[ts[i+1]]
+		p2 := points[ts[i+2]]
+		result += area(p0, p1, p2)
+	}
+	return result / 2
+}
+
 type triangulator struct {
 	points       []Point
 	distances    []float64
@@ -335,4 +348,17 @@ func (t *triangulator) legalize(a int) int {
 	}
 
 	return ar
+}
+
+func (t *triangulator) hullArea() float64 {
+	var result float64
+	e := t.hull
+	for {
+		result += (e.p.X - e.prev.p.X) * (e.p.Y + e.prev.p.Y)
+		e = e.next
+		if e == t.hull {
+			break
+		}
+	}
+	return result / 2
 }

@@ -295,6 +295,11 @@ func (t *triangulator) legalize(a int) int {
 	ar := a0 + (a+2)%3
 	bl := b0 + (b+2)%3
 
+	if b < 0 {
+		// TODO: this happens for points on a circle - why?
+		return ar
+	}
+
 	p0 := t.triangles[ar]
 	pr := t.triangles[a]
 	pl := t.triangles[al]

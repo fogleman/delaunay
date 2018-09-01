@@ -16,10 +16,8 @@ type Triangulation struct {
 // Triangulate returns a Delaunay triangulation of the provided points.
 func Triangulate(points []Point) (*Triangulation, error) {
 	t := newTriangulator(points)
-	if err := t.triangulate(); err != nil {
-		return nil, err
-	}
-	return &Triangulation{points, t.convexHull(), t.triangles, t.halfedges}, nil
+	err := t.triangulate()
+	return &Triangulation{points, t.convexHull(), t.triangles, t.halfedges}, err
 }
 
 func (t *Triangulation) area() float64 {
@@ -36,15 +34,15 @@ func (t *Triangulation) area() float64 {
 }
 
 type triangulator struct {
-	points       []Point
-	distances    []float64
-	ids          []int
-	center       Point
-	triangles    []int
-	halfedges    []int
-	trianglesLen int
-	hull         *node
-	hash         []*node
+	points           []Point
+	squaredDistances []float64
+	ids              []int
+	center           Point
+	triangles        []int
+	halfedges        []int
+	trianglesLen     int
+	hull             *node
+	hash             []*node
 }
 
 func newTriangulator(points []Point) *triangulator {
@@ -62,8 +60,8 @@ func (a *triangulator) Swap(i, j int) {
 }
 
 func (a *triangulator) Less(i, j int) bool {
-	d1 := a.distances[a.ids[i]]
-	d2 := a.distances[a.ids[j]]
+	d1 := a.squaredDistances[a.ids[i]]
+	d2 := a.squaredDistances[a.ids[j]]
 	if d1 != d2 {
 		return d1 < d2
 	}
@@ -112,7 +110,7 @@ func (tri *triangulator) triangulate() error {
 	m := Point{(x0 + x1) / 2, (y0 + y1) / 2}
 	minDist := infinity
 	for i, p := range points {
-		d := p.distance(m)
+		d := p.squaredDistance(m)
 		if d < minDist {
 			i0 = i
 			minDist = d
@@ -125,7 +123,7 @@ func (tri *triangulator) triangulate() error {
 		if i == i0 {
 			continue
 		}
-		d := p.distance(points[i0])
+		d := p.squaredDistance(points[i0])
 		if d > 0 && d < minDist {
 			i1 = i
 			minDist = d
@@ -156,9 +154,9 @@ func (tri *triangulator) triangulate() error {
 	tri.center = circumcenter(points[i0], points[i1], points[i2])
 
 	// sort the points by distance from the seed triangle circumcenter
-	tri.distances = make([]float64, n)
+	tri.squaredDistances = make([]float64, n)
 	for i, p := range points {
-		tri.distances[i] = p.distance(tri.center)
+		tri.squaredDistances[i] = p.squaredDistance(tri.center)
 	}
 	sort.Sort(tri)
 
@@ -186,6 +184,8 @@ func (tri *triangulator) triangulate() error {
 	tri.halfedges = make([]int, maxTriangles*3)
 
 	tri.addTriangle(i0, i1, i2, -1, -1, -1)
+
+	var result error
 
 	pp := Point{infinity, infinity}
 	for k := 0; k < n; k++ {
@@ -219,11 +219,17 @@ func (tri *triangulator) triangulate() error {
 		start = start.prev
 
 		e := start
+		skip := false
 		for area(p, e.p, e.next.p) >= 0 {
 			e = e.next
 			if e == start {
-				return fmt.Errorf("Something is wrong with the input points.")
+				result = fmt.Errorf("Not all points were included in the triangulation.")
+				skip = true
+				break
 			}
+		}
+		if skip {
+			continue
 		}
 		walkBack := e == start
 
@@ -264,7 +270,7 @@ func (tri *triangulator) triangulate() error {
 	tri.triangles = tri.triangles[:tri.trianglesLen]
 	tri.halfedges = tri.halfedges[:tri.trianglesLen]
 
-	return nil
+	return result
 }
 
 func (t *triangulator) hashKey(point Point) int {
@@ -364,7 +370,7 @@ func (t *triangulator) legalize(a int) int {
 func (t *triangulator) convexHull() []Point {
 	var result []Point
 	e := t.hull
-	for {
+	for e != nil {
 		result = append(result, e.p)
 		e = e.prev
 		if e == t.hull {

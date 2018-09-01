@@ -51,7 +51,11 @@ func ConvexHull(points []Point) []Point {
 	}
 
 	// construct complete hull
-	U = U[:len(U)-1]
-	L = L[:len(L)-1]
+	if len(U) > 0 {
+		U = U[:len(U)-1]
+	}
+	if len(L) > 0 {
+		L = L[:len(L)-1]
+	}
 	return append(L, U...)
 }

@@ -23,12 +23,13 @@ func ConvexHull(points []Point) []Point {
 		return a.Y < b.Y
 	})
 
-	// filter duplicate points
+	// filter nearly-duplicate points
 	distinctPoints := points[:0]
 	for i, p := range points {
-		if i == 0 || p != points[i-1] {
-			distinctPoints = append(distinctPoints, p)
+		if i > 0 && p.squaredDistance(points[i-1]) < eps {
+			continue
 		}
+		distinctPoints = append(distinctPoints, p)
 	}
 	points = distinctPoints
 

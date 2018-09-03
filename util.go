@@ -2,7 +2,7 @@ package delaunay
 
 import "math"
 
-const eps = 1e-9
+var eps = math.Nextafter(1, 2) - 1
 
 var infinity = math.Inf(1)
 
@@ -80,4 +80,17 @@ func polygonArea(points []Point) float64 {
 		result += (p.X - q.X) * (p.Y + q.Y)
 	}
 	return result / 2
+}
+
+func polygonPerimeter(points []Point) float64 {
+	if len(points) == 0 {
+		return 0
+	}
+	var result float64
+	q := points[len(points)-1]
+	for _, p := range points {
+		result += p.distance(q)
+		q = p
+	}
+	return result
 }

@@ -165,8 +165,8 @@ func (tri *triangulator) triangulate() error {
 		i := tri.ids[k]
 		p := points[i]
 
-		// skip duplicate points
-		if p == pp {
+		// skip nearly-duplicate points
+		if p.squaredDistance(pp) < eps {
 			continue
 		}
 		pp = p

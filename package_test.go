@@ -61,34 +61,10 @@ func validate(t *testing.T, points []Point) *Triangulation {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	// verify halfedges
-	for i1, i2 := range tri.Halfedges {
-		if i1 != -1 && tri.Halfedges[i1] != i2 {
-			t.Fatal("invalid halfedge connection")
-		}
-		if i2 != -1 && tri.Halfedges[i2] != i1 {
-			t.Fatal("invalid halfedge connection")
-		}
+	err = tri.Validate()
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	// verify convex hull area vs sum of triangle areas
-	hull1 := tri.ConvexHull
-	hull2 := ConvexHull(points)
-	area1 := polygonArea(hull1)
-	area2 := polygonArea(hull2)
-	area3 := tri.area()
-	if math.Abs(area1-area2) > 1e-9 || math.Abs(area1-area3) > 1e-9 {
-		t.Fatalf("hull areas disagree: %f, %f, %f", area1, area2, area3)
-	}
-
-	// verify convex hull perimeter
-	perimeter1 := polygonPerimeter(hull1)
-	perimeter2 := polygonPerimeter(hull2)
-	if math.Abs(perimeter1-perimeter2) > 1e-9 {
-		t.Fatalf("hull perimeters disagree: %f, %f", perimeter1, perimeter2)
-	}
-
 	return tri
 }
 

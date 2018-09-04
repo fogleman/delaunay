@@ -6,6 +6,24 @@ var eps = math.Nextafter(1, 2) - 1
 
 var infinity = math.Inf(1)
 
+func nextHalfedge(e int) int {
+	if e%3 == 2 {
+		return e - 2
+	}
+	return e + 1
+}
+
+func prevHalfedge(e int) int {
+	if e%3 == 0 {
+		return e + 2
+	}
+	return e - 1
+}
+
+func triangleOfEdge(e int) int {
+	return e / 3
+}
+
 func pseudoAngle(dx, dy float64) float64 {
 	p := dx / (math.Abs(dx) + math.Abs(dy))
 	if dy > 0 {

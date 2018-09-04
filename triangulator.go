@@ -7,6 +7,7 @@ import (
 )
 
 type triangulator struct {
+	robust           bool
 	points           []Point
 	squaredDistances []float64
 	ids              []int
@@ -18,8 +19,11 @@ type triangulator struct {
 	hash             []*node
 }
 
-func newTriangulator(points []Point) *triangulator {
-	return &triangulator{points: points}
+func newTriangulator(points []Point, robust bool) *triangulator {
+	if robust {
+		points = makeRobustPoints(points)
+	}
+	return &triangulator{robust: robust, points: points}
 }
 
 // sorting a triangulator sorts the `ids` such that the referenced points
@@ -33,13 +37,17 @@ func (a *triangulator) Swap(i, j int) {
 }
 
 func (a *triangulator) Less(i, j int) bool {
-	d1 := a.squaredDistances[a.ids[i]]
-	d2 := a.squaredDistances[a.ids[j]]
-	if d1 != d2 {
-		return d1 < d2
-	}
+	// d1 := a.squaredDistances[a.ids[i]]
+	// d2 := a.squaredDistances[a.ids[j]]
+	// if d1 != d2 {
+	// 	return d1 < d2
+	// }
 	p1 := a.points[a.ids[i]]
 	p2 := a.points[a.ids[j]]
+	d := robustDistanceComparison(a.robust, a.center, p1, p2)
+	if d != 0 {
+		return d < 0
+	}
 	if p1.X != p2.X {
 		return p1.X < p2.X
 	}
@@ -55,51 +63,33 @@ func (tri *triangulator) triangulate() error {
 	}
 
 	tri.ids = make([]int, n)
-
-	// compute bounds
-	x0 := points[0].X
-	y0 := points[0].Y
-	x1 := points[0].X
-	y1 := points[0].Y
-	for i, p := range points {
-		if p.X < x0 {
-			x0 = p.X
-		}
-		if p.X > x1 {
-			x1 = p.X
-		}
-		if p.Y < y0 {
-			y0 = p.Y
-		}
-		if p.Y > y1 {
-			y1 = p.Y
-		}
+	for i := range tri.ids {
 		tri.ids[i] = i
 	}
 
 	var i0, i1, i2 int
+	var has0, has1 bool
+
+	// compute bounds
+	x0, y0, x1, y1 := bounds(points)
 
 	// pick a seed point close to midpoint
 	m := Point{(x0 + x1) / 2, (y0 + y1) / 2}
-	minDist := infinity
 	for i, p := range points {
-		d := p.squaredDistance(m)
-		if d < minDist {
+		if !has0 || robustDistanceComparison(tri.robust, m, p, points[i0]) < 0 {
 			i0 = i
-			minDist = d
+			has0 = true
 		}
 	}
 
 	// find point closest to seed point
-	minDist = infinity
 	for i, p := range points {
-		if i == i0 {
-			continue
+		if p == points[i0] {
+			continue // skip exact matches
 		}
-		d := p.squaredDistance(points[i0])
-		if d > 0 && d < minDist {
+		if !has1 || robustDistanceComparison(tri.robust, m, p, points[i1]) < 0 {
 			i1 = i
-			minDist = d
+			has1 = true
 		}
 	}
 
@@ -120,11 +110,12 @@ func (tri *triangulator) triangulate() error {
 	}
 
 	// swap the order of the seed points for counter-clockwise orientation
-	if area(points[i0], points[i1], points[i2]) < 0 {
+	if robustOrient(tri.robust, points[i0], points[i1], points[i2]) {
 		i1, i2 = i2, i1
 	}
 
 	tri.center = circumcenter(points[i0], points[i1], points[i2])
+	// tri.center = m
 
 	// sort the points by distance from the seed triangle circumcenter
 	tri.squaredDistances = make([]float64, n)
@@ -159,12 +150,14 @@ func (tri *triangulator) triangulate() error {
 	tri.addTriangle(i0, i1, i2, -1, -1, -1)
 
 	pp := Point{infinity, infinity}
+	var skipCount, duplicateCount int
 	for k := 0; k < n; k++ {
 		i := tri.ids[k]
 		p := points[i]
 
-		// skip nearly-duplicate points
-		if p.squaredDistance(pp) < eps {
+		// skip exact-duplicates
+		if p == pp {
+			duplicateCount++
 			continue
 		}
 		pp = p
@@ -190,7 +183,7 @@ func (tri *triangulator) triangulate() error {
 		start = start.prev
 
 		e := start
-		for area(p, e.p, e.next.p) >= 0 {
+		for !robustOrient(tri.robust, p, e.p, e.next.p) {
 			e = e.next
 			if e == start {
 				e = nil
@@ -199,6 +192,10 @@ func (tri *triangulator) triangulate() error {
 		}
 		if e == nil {
 			// likely a near-duplicate point; skip it
+			// fmt.Println(p.squaredDistance(points[i0]), p.squaredDistance(points[i1]), p.squaredDistance(points[i2]))
+			// fmt.Println(p.squaredDistance(points[i-1]))
+			fmt.Println(i, i0, i1, i2)
+			skipCount++
 			continue
 		}
 		walkBack := e == start
@@ -213,7 +210,7 @@ func (tri *triangulator) triangulate() error {
 
 		// walk forward through the hull, adding more triangles and flipping recursively
 		q := e.next
-		for area(p, q.p, q.next.p) < 0 {
+		for robustOrient(tri.robust, p, q.p, q.next.p) {
 			t = tri.addTriangle(q.i, i, q.next.i, q.prev.t, -1, q.t)
 			q.prev.t = tri.legalize(t + 2)
 			tri.hull = q.remove()
@@ -223,7 +220,7 @@ func (tri *triangulator) triangulate() error {
 		if walkBack {
 			// walk backward from the other side, adding more triangles and flipping
 			q := e.prev
-			for area(p, q.prev.p, q.p) < 0 {
+			for robustOrient(tri.robust, p, q.prev.p, q.p) {
 				t = tri.addTriangle(q.prev.i, i, q.i, -1, q.t, q.prev.t)
 				tri.legalize(t + 2)
 				q.prev.t = t
@@ -235,6 +232,15 @@ func (tri *triangulator) triangulate() error {
 		// save the two new edges in the hash table
 		tri.hashEdge(e)
 		tri.hashEdge(e.prev)
+	}
+
+	if duplicateCount > 0 {
+		// fmt.Printf("skipped %d exact-duplicates\n", duplicateCount)
+	}
+
+	if skipCount > 0 {
+		// return fmt.Errorf("Unable to place %d points.", skipCount)
+		fmt.Printf("skipped %d probable-duplicates\n", skipCount)
 	}
 
 	tri.triangles = tri.triangles[:tri.trianglesLen]
@@ -305,7 +311,7 @@ func (t *triangulator) legalize(a int) int {
 	pl := t.triangles[al]
 	p1 := t.triangles[bl]
 
-	illegal := inCircle(t.points[p0], t.points[pr], t.points[pl], t.points[p1])
+	illegal := robustInCircle(t.robust, t.points[p0], t.points[pr], t.points[pl], t.points[p1])
 
 	if illegal {
 		t.triangles[a] = p1
@@ -340,11 +346,11 @@ func (t *triangulator) legalize(a int) int {
 	return ar
 }
 
-func (t *triangulator) convexHull() []Point {
-	var result []Point
+func (t *triangulator) convexHull() []int {
+	var result []int
 	e := t.hull
 	for e != nil {
-		result = append(result, e.p)
+		result = append(result, e.i)
 		e = e.prev
 		if e == t.hull {
 			break

@@ -94,3 +94,25 @@ func polygonPerimeter(points []Point) float64 {
 	}
 	return result
 }
+
+func bounds(points []Point) (x0, y0, x1, y1 float64) {
+	x0 = points[0].X
+	y0 = points[0].Y
+	x1 = points[0].X
+	y1 = points[0].Y
+	for _, p := range points {
+		if p.X < x0 {
+			x0 = p.X
+		}
+		if p.X > x1 {
+			x1 = p.X
+		}
+		if p.Y < y0 {
+			y0 = p.Y
+		}
+		if p.Y > y1 {
+			y1 = p.Y
+		}
+	}
+	return
+}

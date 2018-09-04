@@ -14,9 +14,18 @@ type Triangulation struct {
 
 // Triangulate returns a Delaunay triangulation of the provided points.
 func Triangulate(points []Point) (*Triangulation, error) {
-	t := newTriangulator(points)
+	t := newTriangulator(points, true)
 	err := t.triangulate()
-	return &Triangulation{points, t.convexHull(), t.triangles, t.halfedges}, err
+	hull := t.convexHull()
+	hullPoints := make([]Point, len(hull))
+	for i, j := range hull {
+		hullPoints[i] = points[j]
+	}
+	tri := &Triangulation{points, hullPoints, t.triangles, t.halfedges}
+	if err == nil {
+		err = tri.Validate()
+	}
+	return tri, err
 }
 
 func (t *Triangulation) area() float64 {

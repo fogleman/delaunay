@@ -9,11 +9,11 @@ var infinity = math.Inf(1)
 func pseudoAngle(dx, dy float64) float64 {
 	p := dx / (math.Abs(dx) + math.Abs(dy))
 	if dy > 0 {
-		p = 3 - p
+		p = (3 - p) / 4
 	} else {
-		p = 1 + p
+		p = (1 + p) / 4
 	}
-	return p / 4
+	return math.Max(0, math.Min(1-eps, p))
 }
 
 func area(a, b, c Point) float64 {

@@ -158,8 +158,6 @@ func (tri *triangulator) triangulate() error {
 
 	tri.addTriangle(i0, i1, i2, -1, -1, -1)
 
-	var result error
-
 	pp := Point{infinity, infinity}
 	for k := 0; k < n; k++ {
 		i := tri.ids[k]
@@ -192,16 +190,15 @@ func (tri *triangulator) triangulate() error {
 		start = start.prev
 
 		e := start
-		skip := false
 		for area(p, e.p, e.next.p) >= 0 {
 			e = e.next
 			if e == start {
-				result = fmt.Errorf("Not all points were included in the triangulation.")
-				skip = true
+				e = nil
 				break
 			}
 		}
-		if skip {
+		if e == nil {
+			// likely a near-duplicate point; skip it
 			continue
 		}
 		walkBack := e == start
@@ -243,7 +240,7 @@ func (tri *triangulator) triangulate() error {
 	tri.triangles = tri.triangles[:tri.trianglesLen]
 	tri.halfedges = tri.halfedges[:tri.trianglesLen]
 
-	return result
+	return nil
 }
 
 func (t *triangulator) hashKey(point Point) int {
@@ -317,13 +314,16 @@ func (t *triangulator) legalize(a int) int {
 		// edge swapped on the other side of the hull (rare)
 		// fix the halfedge reference
 		if t.halfedges[bl] == -1 {
-			e := t.hull.next
-			for e != t.hull {
+			e := t.hull
+			for {
 				if e.t == bl {
 					e.t = a
 					break
 				}
 				e = e.next
+				if e == t.hull {
+					break
+				}
 			}
 		}
 

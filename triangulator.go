@@ -140,15 +140,15 @@ func (tri *triangulator) triangulate() error {
 	// initialize a circular doubly-linked list that will hold an advancing convex hull
 	nodes := make([]node, n)
 
-	e := newNode(nodes, points[i0], i0, nil)
+	e := newNode(nodes, i0, nil)
 	e.t = 0
 	tri.hashEdge(e)
 
-	e = newNode(nodes, points[i1], i1, e)
+	e = newNode(nodes, i1, e)
 	e.t = 1
 	tri.hashEdge(e)
 
-	e = newNode(nodes, points[i2], i2, e)
+	e = newNode(nodes, i2, e)
 	e.t = 2
 	tri.hashEdge(e)
 
@@ -181,7 +181,7 @@ func (tri *triangulator) triangulate() error {
 		key := tri.hashKey(p)
 		for j := 0; j < len(tri.hash); j++ {
 			start = tri.hash[key]
-			if start != nil && !start.removed {
+			if start != nil && start.i >= 0 {
 				break
 			}
 			key++
@@ -192,7 +192,7 @@ func (tri *triangulator) triangulate() error {
 		start = start.prev
 
 		e := start
-		for area(p, e.p, e.next.p) >= 0 {
+		for area(p, points[e.i], points[e.next.i]) >= 0 {
 			e = e.next
 			if e == start {
 				e = nil
@@ -208,14 +208,14 @@ func (tri *triangulator) triangulate() error {
 		// add the first triangle from the point
 		t := tri.addTriangle(e.i, i, e.next.i, -1, -1, e.t)
 		e.t = t // keep track of boundary triangles on the hull
-		e = newNode(nodes, points[i], i, e)
+		e = newNode(nodes, i, e)
 
 		// recursively flip triangles from the point until they satisfy the Delaunay condition
 		e.t = tri.legalize(t + 2)
 
 		// walk forward through the hull, adding more triangles and flipping recursively
 		q := e.next
-		for area(p, q.p, q.next.p) < 0 {
+		for area(p, points[q.i], points[q.next.i]) < 0 {
 			t = tri.addTriangle(q.i, i, q.next.i, q.prev.t, -1, q.t)
 			q.prev.t = tri.legalize(t + 2)
 			tri.hull = q.remove()
@@ -225,7 +225,7 @@ func (tri *triangulator) triangulate() error {
 		if walkBack {
 			// walk backward from the other side, adding more triangles and flipping
 			q := e.prev
-			for area(p, q.prev.p, q.p) < 0 {
+			for area(p, points[q.prev.i], points[q.i]) < 0 {
 				t = tri.addTriangle(q.prev.i, i, q.i, -1, q.t, q.prev.t)
 				tri.legalize(t + 2)
 				q.prev.t = t
@@ -251,7 +251,7 @@ func (t *triangulator) hashKey(point Point) int {
 }
 
 func (t *triangulator) hashEdge(e *node) {
-	t.hash[t.hashKey(e.p)] = e
+	t.hash[t.hashKey(t.points[e.i])] = e
 }
 
 func (t *triangulator) addTriangle(i0, i1, i2, a, b, c int) int {
@@ -346,7 +346,7 @@ func (t *triangulator) convexHull() []Point {
 	var result []Point
 	e := t.hull
 	for e != nil {
-		result = append(result, e.p)
+		result = append(result, t.points[e.i])
 		e = e.prev
 		if e == t.hull {
 			break

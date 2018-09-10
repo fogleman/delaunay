@@ -1,19 +1,15 @@
 package delaunay
 
 type node struct {
-	p       Point
-	i       int
-	t       int
-	removed bool
-	prev    *node
-	next    *node
+	i    int
+	t    int
+	prev *node
+	next *node
 }
 
-func newNode(nodes []node, p Point, i int, prev *node) *node {
+func newNode(nodes []node, i int, prev *node) *node {
 	n := &nodes[i]
-	n.p = p
 	n.i = i
-	n.removed = false
 	if prev == nil {
 		n.prev = n
 		n.next = n
@@ -29,6 +25,6 @@ func newNode(nodes []node, p Point, i int, prev *node) *node {
 func (n *node) remove() *node {
 	n.prev.next = n.next
 	n.next.prev = n.prev
-	n.removed = true
+	n.i = -1
 	return n.prev
 }

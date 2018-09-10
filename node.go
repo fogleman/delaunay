@@ -9,8 +9,11 @@ type node struct {
 	next    *node
 }
 
-func newNode(p Point, i int, prev *node) *node {
-	n := &node{p, i, 0, false, nil, nil}
+func newNode(nodes []node, p Point, i int, prev *node) *node {
+	n := &nodes[i]
+	n.p = p
+	n.i = i
+	n.removed = false
 	if prev == nil {
 		n.prev = n
 		n.next = n

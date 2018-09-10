@@ -138,15 +138,17 @@ func (tri *triangulator) triangulate() error {
 	tri.hash = make([]*node, hashSize)
 
 	// initialize a circular doubly-linked list that will hold an advancing convex hull
-	e := newNode(points[i0], i0, nil)
+	nodes := make([]node, n)
+
+	e := newNode(nodes, points[i0], i0, nil)
 	e.t = 0
 	tri.hashEdge(e)
 
-	e = newNode(points[i1], i1, e)
+	e = newNode(nodes, points[i1], i1, e)
 	e.t = 1
 	tri.hashEdge(e)
 
-	e = newNode(points[i2], i2, e)
+	e = newNode(nodes, points[i2], i2, e)
 	e.t = 2
 	tri.hashEdge(e)
 
@@ -206,7 +208,7 @@ func (tri *triangulator) triangulate() error {
 		// add the first triangle from the point
 		t := tri.addTriangle(e.i, i, e.next.i, -1, -1, e.t)
 		e.t = t // keep track of boundary triangles on the hull
-		e = newNode(points[i], i, e)
+		e = newNode(nodes, points[i], i, e)
 
 		// recursively flip triangles from the point until they satisfy the Delaunay condition
 		e.t = tri.legalize(t + 2)

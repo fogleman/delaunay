@@ -55,8 +55,9 @@ func circle(n int, rnd *rand.Rand) []delaunay.Point {
 	points := make([]delaunay.Point, n)
 	for i := range points {
 		t := float64(i) / float64(n)
-		x := math.Cos(t)
-		y := math.Sin(t)
+		a := 2 * math.Pi * t
+		x := math.Cos(a)
+		y := math.Sin(a)
 		points[i] = delaunay.Point{x, y}
 	}
 	return points

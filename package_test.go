@@ -52,7 +52,7 @@ func circle(n int, rnd *rand.Rand) []Point {
 
 func shouldFail(t *testing.T, points []Point) {
 	if _, err := Triangulate(points); err == nil {
-		t.Fatal("should have failed")
+		t.Fatalf("should have failed. %v", points)
 	}
 }
 
@@ -101,6 +101,11 @@ func TestCases(t *testing.T) {
 	shouldFail(t, []Point{{0, 0}, {0, 0}, {0, 0}})
 	shouldFail(t, []Point{{0, 0}, {1, 0}})
 	shouldFail(t, []Point{{0, 0}, {1, 0}, {2, 0}, {3, 0}})
+	shouldFail(t, []Point{{0, 0}, {1, 0}, {2, 0}, {3, 1}, {4, math.Inf(1)}})
+	shouldFail(t, []Point{{0, 0}, {1, 0}, {2, 0}, {3, 1}, {math.Inf(1), 4}})
+	shouldFail(t, []Point{{0, 0}, {1, 0}, {2, 0}, {3, 1}, {4, math.Inf(-1)}})
+	shouldFail(t, []Point{{0, 0}, {1, 0}, {2, 0}, {3, 1}, {math.Inf(-1), 4}})
+	shouldFail(t, []Point{{0, 0}, {1, 0}, {2, 0}, {3, 1}, {math.Inf(-1), math.NaN()}})
 }
 
 func TestUniform(t *testing.T) {

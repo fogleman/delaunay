@@ -54,6 +54,14 @@ func (tri *triangulator) triangulate() error {
 		return nil
 	}
 
+	// check input points
+	for i := range points {
+		if math.IsNaN(points[i].X) || math.IsNaN(points[i].Y) ||
+			math.IsInf(points[i].X, 0) || math.IsInf(points[i].Y, 0) {
+			return fmt.Errorf("point coordinate is not valid")
+		}
+	}
+
 	tri.ids = make([]int, n)
 
 	// compute bounds

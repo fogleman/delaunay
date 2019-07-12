@@ -7,6 +7,10 @@ func cross2D(p, a, b Point) float64 {
 }
 
 // ConvexHull returns the convex hull of the provided points.
+//
+// Algorithm Implementation: Andrew's monotone chain convex hull algorithm.
+//
+// See: https://en.wikibooks.org/wiki/Algorithm_Implementation/Geometry/Convex_hull/Monotone_chain
 func ConvexHull(points []Point) []Point {
 	// copy points
 	pointsCopy := make([]Point, len(points))

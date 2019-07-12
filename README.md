@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/fogleman/delaunay?status.svg)](https://godoc.org/github.com/fogleman/delaunay)
+
 ## Delaunay Triangulation
 
 Fast Delaunay triangulation implemented in Go.

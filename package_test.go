@@ -156,3 +156,132 @@ func BenchmarkGrid(b *testing.B) {
 	points := grid(b.N, rnd)
 	Triangulate(points)
 }
+
+func TestConvexHull(t *testing.T) {
+	type TestCase struct {
+		name     string
+		input    []Point
+		expected []Point
+	}
+	tcs := []TestCase{
+		{
+			name:     "empty",
+			input:    []Point{},
+			expected: []Point{},
+		}, {
+			name:     "one point",
+			input:    []Point{{1, 0}},
+			expected: []Point{},
+		}, {
+			name:     "two points",
+			input:    []Point{{0, 0}, {1, 0}},
+			expected: []Point{{1, 0}, {0, 0}},
+		}, {
+			name:     "on one vertical line",
+			input:    []Point{{0, 0}, {2, 0}, {4, 0}},
+			expected: []Point{{0, 0}, {2, 0}, {4, 0}, {2, 0}},
+		}, {
+			name:     "on one horizontal line",
+			input:    []Point{{0, 0}, {0, 2}, {0, 4}},
+			expected: []Point{{0, 0}, {0, 2}, {0, 4}, {0, 2}},
+		}, {
+			name:     "on one diagonal line",
+			input:    []Point{{0, 0}, {2, 2}, {4, 4}},
+			expected: []Point{{0, 0}, {2, 2}, {4, 4}, {2, 2}},
+		}, {
+			name:     "square",
+			input:    []Point{{0, 0}, {1, 0}, {0, 1}, {1, 1}},
+			expected: []Point{{0, 0}, {1, 0}, {0, 1}, {1, 1}},
+		}, {
+			name:     "ortho",
+			input:    []Point{{0, 0}, {1, 0}, {0, 1}, {-1, 0}, {0, -1}},
+			expected: []Point{{1, 0}, {0, 1}, {-1, 0}, {0, -1}},
+		}, {
+			name:     "rectangle",
+			input:    []Point{{0, 0}, {2, 0}, {0, 2}, {2, 2}},
+			expected: []Point{{0, 0}, {2, 0}, {0, 2}, {2, 2}},
+		}, {
+			name:     "triangle",
+			input:    []Point{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {1, 1}},
+			expected: []Point{{0, 0}, {0, 1}, {0, 2}, {0, 3}, {1, 1}},
+		},
+	}
+
+	// with dublicate points
+	for i, size := 0, len(tcs); i < size; i++ {
+		var tc TestCase
+		tc.name = tcs[i].name + ".dublicate"
+		tc.input = make([]Point, len(tcs[i].input))
+		copy(tc.input, tcs[i].input)
+		for j, size := 0, len(tcs[i].input); j < size; j++ {
+			tcs[i].input = append(tcs[i].input, tcs[i].input[j])
+		}
+		tc.expected = make([]Point, len(tcs[i].expected))
+		copy(tc.expected, tcs[i].expected)
+		tcs = append(tcs, tc)
+	}
+
+	// replace x->-x, y->-y
+	for i, size := 0, len(tcs); i < size; i++ {
+		var tc TestCase
+		tc.name = tcs[i].name + ".negative"
+		tc.input = make([]Point, len(tcs[i].input))
+		copy(tc.input, tcs[i].input)
+		for j := range tc.input {
+			tc.input[j].X, tc.input[j].Y = -tc.input[j].X, -tc.input[j].Y
+		}
+		tc.expected = make([]Point, len(tcs[i].expected))
+		copy(tc.expected, tcs[i].expected)
+		for j := range tc.expected {
+			tc.expected[j].X, tc.expected[j].Y = -tc.expected[j].X, -tc.expected[j].Y
+		}
+		tcs = append(tcs, tc)
+	}
+
+	// replace x->y , y->x
+	for i, size := 0, len(tcs); i < size; i++ {
+		var tc TestCase
+		tc.name = tcs[i].name + ".replaceXY"
+		tc.input = make([]Point, len(tcs[i].input))
+		copy(tc.input, tcs[i].input)
+		for j := range tc.input {
+			tc.input[j].X, tc.input[j].Y = tc.input[j].Y, tc.input[j].X
+		}
+		tc.expected = make([]Point, len(tcs[i].expected))
+		copy(tc.expected, tcs[i].expected)
+		for j := range tc.expected {
+			tc.expected[j].X, tc.expected[j].Y = tc.expected[j].Y, tc.expected[j].X
+		}
+		tcs = append(tcs, tc)
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := ConvexHull(tc.input)
+			wrong := false
+			if len(actual) == len(tc.expected) {
+				allFound := true
+				for i := range actual {
+					found := false
+					for j := range tc.expected {
+						if actual[i].X == tc.expected[j].X &&
+							actual[i].Y == tc.expected[j].Y {
+							found = true
+						}
+					}
+					if !found {
+						allFound = false
+						break
+					}
+				}
+				wrong = !allFound
+			} else {
+				wrong = true
+			}
+
+			if wrong {
+				t.Errorf("Actual : %v\nExpect : %v\n", actual, tc.expected)
+			}
+		})
+	}
+}
